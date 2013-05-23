@@ -11,17 +11,28 @@ from django.forms.widgets import (
 from django.core.exceptions import ValidationError
 from django.core.cache import cache  # this maybe a bad idea
 
-from models import CardSet
+from models import (
+    CardSet,
+    Game,
+)
 import log
 
 
 class PlayerForm(forms.Form):
 
+    game = forms.IntegerField(
+        required=True,
+        widget=forms.widgets.HiddenInput()
+    )
+
     def __init__(self, *args, **kwargs):
         cards = kwargs.pop('cards', ())
+        game = kwargs.pop('game', None)
         self.blanks = kwargs.pop('blanks', 1)
 
         super(PlayerForm, self).__init__(*args, **kwargs)
+
+        self.fields['game'].initial = game.id
 
         for blank in xrange(self.blanks):
             self.fields['card_selection%d' % (blank,)] = forms.ChoiceField(
@@ -29,6 +40,19 @@ class PlayerForm(forms.Form):
                 required=True,
                 choices=cards,
             )
+
+    def clean_game(self):
+        game_id = self.cleaned_data.get('game')
+
+        if not game_id:
+            raise ValidationError('Game id missing')
+
+        try:
+            game = Game.objects.get(pk=game_id)
+        except Game.DoesNotExist:
+            raise ValidationError('Game not found')
+
+        return game
 
     def clean(self):
         answers = []

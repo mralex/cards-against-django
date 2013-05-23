@@ -14,6 +14,7 @@ from django.conf import settings
 
 from forms import (
     PlayerForm,
+    CzarForm,
     LobbyForm,
     JoinForm,
     ExitForm,
@@ -150,6 +151,25 @@ class LobbyView(FormView):
         return super(LobbyView, self).form_valid(form)
 
 
+class PlayerView(FormView):
+    template_name = 'player_view.html'
+    form_class = PlayerForm
+
+
+class CzarView(FormView):
+    template_name = 'czar_view.html'
+    form_class = CzarForm
+
+    def get(self, *args, **kwargs):
+        self.game = kwargs['game']
+        self.player_name = kwargs['player_name']
+
+        return super(CzarView, self).get(*args, **kwargs)
+
+    # def get_context_data(self, *args, **kwargs):
+        
+
+
 class GameView(GameViewMixin, FormView):
 
     template_name = 'game_view.html'
@@ -166,6 +186,16 @@ class GameView(GameViewMixin, FormView):
 
         card_czar_name = self.game.gamedata['card_czar']
         self.is_card_czar = self.player_name == card_czar_name
+
+        if self.is_card_czar:
+            view = CzarView.as_view()
+            return view(
+                request,
+                player_name=self.player_name,
+                game=self.game,
+                *args,
+                **kwargs
+            )
 
         return super(GameView, self).dispatch(request, *args, **kwargs)
 
@@ -269,6 +299,9 @@ class GameView(GameViewMixin, FormView):
     def get_form_kwargs(self):
         black_card_id = self.game.gamedata['current_black_card']
         kwargs = super(GameView, self).get_form_kwargs()
+
+        kwargs['game'] = self.game
+
         if self.player_name:
             # get_form_kwargs() is called all the time even when we don't intend to show form
             # check above could be can_show_form()?
